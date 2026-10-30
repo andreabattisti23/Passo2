@@ -1,0 +1,47 @@
+name: Crea APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Estrai il progetto
+        run: unzip -q passo.zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Compila l'app
+        working-directory: passo
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Compila l'APK
+        working-directory: passo/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Pubblica l'APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Passo build ${{ github.run_number }}
+          body: Scarica Passo.apk e aprilo sul telefono per installare.
+          files: passo/android/app/build/outputs/apk/debug/app-debug.apk
